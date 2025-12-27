@@ -24,3 +24,12 @@ It is important to note that this project is currently a frontend-only demonstra
 - **Security & Authentication**: Advanced security measures, proper user authentication (beyond basic email input), and authorization are not part of this demonstration.
 
 This project serves as a foundational step, highlighting the direct use of the Granite model for interactive educational content generation, with a clear path for future expansion into a full-fledged application.
+
+## How to Run in Google Colab
+
+To run this project in Google Colab, follow these simple steps:
+
+1.  **Open in Colab**: Click on the 'Open in Colab' badge (if available in your GitHub repository) or manually open a new Colab notebook and upload this Python file.
+2.  **Install Dependencies**: Run the first code cell that installs necessary libraries (e.g., `transformers`, `torch`, `gradio`).
+3.  **Run All Cells**: Execute all code cells sequentially. You can do this by going to `Runtime` -> `Run all` in the Colab menu.
+4.  **Access the Gradio App**: Once all cells have executed, a Gradio public URL will be displayed in the output of the last code cell (usually at the bottom). Click on this URL to open the interactive Edututor AI application in your browser.
