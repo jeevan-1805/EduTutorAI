@@ -25,7 +25,7 @@ DUMMY_VECTOR = [1.0] + [0.0] * (DIMENSION - 1)
 def register_student(name: str, email: str):
     key = email.strip().lower()
     students_db[key] = {
-                                   "name": name,
+        "name": name,
         "email": key,
         "registered_at": time.time()
     }
@@ -46,7 +46,7 @@ def record_quiz_result(email: str, student_name: str, topic: str, score: int):
     """
     email_k = email.strip().lower()
     topic_k = (topic or "general").strip().lower()
-    rec_key = f"{email_k}::${topic_k}"
+    rec_key = f"{email_k}::{topic_k}"
 
     now = time.time()
     existing = dashboard_db.get(rec_key)
@@ -119,7 +119,7 @@ def generate_response(prompt, max_new_tokens=400, do_sample=True, temperature=0.
 
 def concept_explanation(concept):
     prompt = f"Explain the concept of {concept} in detail with examples:"
-    return generate_response(prompt, max_new_tokens=800, do_sample=True, temperature=0.7)
+    return generate_response(prompt, max_new_tokens=400, do_sample=True, temperature=0.7)
 
 def generate_interactive_quiz(topic):
     prompt = f"Write 5 multiple choice quiz questions about {topic}. For each question, give exactly 4 options (A, B, C, D). After all questions, add an ANSWERS section with the correct options."
@@ -197,51 +197,53 @@ def login_screen():
         # Small status area for validation messages
         status_msg = gr.Markdown("")
 
+        student_name_state = gr.State("")
+        student_email_state = gr.State("")
+
         # The two UI columns (keeps previous layout)
         student_ui = gr.Column(visible=False)
         educator_ui = gr.Column(visible=False)
 
         with student_ui:
-            student_interface()
+            student_interface(student_name_state, student_email_state)
 
         with educator_ui:
             educator_dashboard()
 
         # route: store registration and show correct UI
         def handle_proceed(role, username, email):
-            # basic validation
             if not role or not username or not email:
                 return ("⚠️ Please enter role, name and email.",
                         gr.update(visible=False),
                         gr.update(visible=False),
-                        None, None)
-
+                        "", "")
             try:
                 if role == "Student":
                     register_student(username, email)
                     return (f"✅ Registered as Student: {username} ({email})",
                             gr.update(visible=True),
                             gr.update(visible=False),
-                            username, email)
+                            username, email)             # ✅ saved into real States
                 else:
                     register_educator(username, email)
                     return (f"✅ Registered as Educator: {username} ({email})",
                             gr.update(visible=False),
                             gr.update(visible=True),
-                            username, email)
+                            "", "")                      # ✅ educators don't need these
             except Exception as e:
                 return (f"❌ Registration failed: {e}",
                         gr.update(visible=False),
                         gr.update(visible=False),
-                        None, None)
+                        "", "")
 
         # When Proceed is clicked:
         # outputs order must match the tuple returned by handle_proceed:
         # (status_msg_text, student_ui_visibility, educator_ui_visibility, user_name_state, user_email_state)
+
         proceed_btn.click(
             fn=handle_proceed,
             inputs=[role, username, email],
-            outputs=[status_msg, student_ui, educator_ui, user_name, user_email]
+            outputs=[status_msg, student_ui, educator_ui, student_name_state, student_email_state]
         )
 
     return login_app
@@ -250,64 +252,64 @@ def login_screen():
 # -------------------------
 # Screen 3A: Student quiz interface
 # -------------------------
-def student_interface():
+def student_interface(student_name_state, student_email_state):
     # Create Gradio interface
-    with gr.Blocks() as student_app:
-        gr.Markdown("# Educational AI Assistant")
 
-        with gr.Tabs():
-            with gr.TabItem("Concept Explanation"):
-                concept_input = gr.Textbox(label="Enter a concept", placeholder="e.g., machine learning")
-                explain_btn = gr.Button("Explain")
-                explanation_output = gr.Textbox(label="Explanation", lines=10)
+    gr.Markdown("# Educational AI Assistant")
 
-                explain_btn.click(concept_explanation, inputs=concept_input, outputs=explanation_output)
+    with gr.Tabs():
+        with gr.TabItem("Concept Explanation"):
+            concept_input = gr.Textbox(label="Enter a concept", placeholder="e.g., machine learning")
+            explain_btn = gr.Button("Explain")
+            explanation_output = gr.Textbox(label="Explanation", lines=10)
 
-            with gr.TabItem("Quiz Generator"):
-                quiz_input = gr.Textbox(label="Enter a topic", placeholder="e.g., physics")
-                quiz_btn = gr.Button("Generate Quiz")
+            explain_btn.click(concept_explanation, inputs=concept_input, outputs=explanation_output)
 
-                status_msg = gr.Markdown("", elem_id="status")
+        with gr.TabItem("Quiz Generator"):
+            quiz_input = gr.Textbox(label="Enter a topic", placeholder="e.g., physics")
+            quiz_btn = gr.Button("Generate Quiz")
 
-                # Predefine 5 Markdown placeholders (question text) and 5 Radios (will be updated)
-                q1 = gr.Markdown("")
-                r1 = gr.Radio(choices=["A) (loading)", "B) (loading)", "C) (loading)", "D) (loading)"], label="Your answer for Q1")
-                q2 = gr.Markdown("")
-                r2 = gr.Radio(choices=["A) (loading)", "B) (loading)", "C) (loading)", "D) (loading)"], label="Your answer for Q2")
-                q3 = gr.Markdown("")
-                r3 = gr.Radio(choices=["A) (loading)", "B) (loading)", "C) (loading)", "D) (loading)"], label="Your answer for Q3")
-                q4 = gr.Markdown("")
-                r4 = gr.Radio(choices=["A) (loading)", "B) (loading)", "C) (loading)", "D) (loading)"], label="Your answer for Q4")
-                q5 = gr.Markdown("")
-                r5 = gr.Radio(choices=["A) (loading)", "B) (loading)", "C) (loading)", "D) (loading)"], label="Your answer for Q5")
+            status_msg = gr.Markdown("", elem_id="status")
 
-                # State to store correct answers (list)
-                correct_answers = gr.State([])
+            # Predefine 5 Markdown placeholders (question text) and 5 Radios (will be updated)
+            q1 = gr.Markdown("")
+            r1 = gr.Radio(choices=["A) (loading)", "B) (loading)", "C) (loading)", "D) (loading)"], label="Your answer for Q1")
+            q2 = gr.Markdown("")
+            r2 = gr.Radio(choices=["A) (loading)", "B) (loading)", "C) (loading)", "D) (loading)"], label="Your answer for Q2")
+            q3 = gr.Markdown("")
+            r3 = gr.Radio(choices=["A) (loading)", "B) (loading)", "C) (loading)", "D) (loading)"], label="Your answer for Q3")
+            q4 = gr.Markdown("")
+            r4 = gr.Radio(choices=["A) (loading)", "B) (loading)", "C) (loading)", "D) (loading)"], label="Your answer for Q4")
+            q5 = gr.Markdown("")
+            r5 = gr.Radio(choices=["A) (loading)", "B) (loading)", "C) (loading)", "D) (loading)"], label="Your answer for Q5")
 
-                # Loading indicator and chained generation (status -> generation -> clear)
-                def show_loading():
-                    return "⏳ Generating quiz… please wait."
+            # State to store correct answers (list)
+            correct_answers = gr.State([])
 
-                quiz_btn.click(
-                    fn=show_loading,
-                    inputs=[],
-                    outputs=status_msg
-                ).then(
-                    fn=generate_interactive_quiz,
-                    inputs=quiz_input,
-                    outputs=[q1, q2, q3, q4, q5, r1, r2, r3, r4, r5, correct_answers]
-                ).then(
-                    fn=lambda: "",  # clear status after done
-                    inputs=[],
-                    outputs=status_msg
-                )
+            # Loading indicator and chained generation (status -> generation -> clear)
+            def show_loading():
+                return "⏳ Generating quiz… please wait."
 
-                submit_btn = gr.Button("Submit Answers")
-                result_output = gr.Textbox(label="Result", lines=5)
+            quiz_btn.click(
+                fn=show_loading,
+                inputs=[],
+                outputs=status_msg
+            ).then(
+                fn=generate_interactive_quiz,
+                inputs=quiz_input,
+                outputs=[q1, q2, q3, q4, q5, r1, r2, r3, r4, r5, correct_answers]
+            ).then(
+                fn=lambda: "",  # clear status after done
+                inputs=[],
+                outputs=status_msg
+            )
 
-                def score_quiz(a1, a2, a3, a4, a5, correct):
-                    # correct is the list we stored in the state
-                    correct_list = correct or []
+            submit_btn = gr.Button("Submit Answers")
+            result_output = gr.Textbox(label="Result", lines=5)
+
+            def score_quiz(a1, a2, a3, a4, a5, correct, student_name, student_email, topic):
+                try:
+                    correct_list = correct if isinstance(correct, list) else []
                     user_answers = [a1, a2, a3, a4, a5]
                     score = 0
                     feedback = []
@@ -315,49 +317,59 @@ def student_interface():
                     for i, (ua, ca) in enumerate(zip(user_answers, correct_list)):
                         ua_letter = ""
                         if isinstance(ua, str) and ua.strip():
-                            # Extract the first letter before ")"
                             ua_letter = ua.strip()[0].upper()
 
                         if ua_letter == ca:
                             score += 1
-                            feedback.append(f"Q{i+1}: ✅ Correct")
+                            feedback.append(f"Q{i+1}: Correct")
                         else:
-                            feedback.append(f"Q{i+1}: ❌ Incorrect (Correct: {ca})")
+                            displayed_ca = ca if ca else "?"
+                            feedback.append(f"Q{i+1}: Incorrect (Correct answer: {displayed_ca})")
+
+                    if not correct_list:
+                        return "Please generate a quiz first before submitting answers."
+
+                    if student_email:
+                        record_quiz_result(
+                            student_email,
+                            student_name or "Unknown",
+                            topic or "general",  # topic from the textbox
+                            score
+                        )
 
                     return f"Your Score: {score}/5\n\n" + "\n".join(feedback)
 
-
-                submit_btn.click(
-                    fn=score_quiz,
-                    inputs=[r1, r2, r3, r4, r5, correct_answers],
-                    outputs=[result_output]
-                )
+                except Exception as e:
+                    return f"Scoring error: {str(e)}"
 
 
+            submit_btn.click(
+                fn=score_quiz,
+                inputs=[r1, r2, r3, r4, r5, correct_answers, student_name_state, student_email_state, quiz_input],
+                outputs=[result_output]
+            )
 
-    return student_app
 
 
 # -------------------------
 # Screen 3B: Educator dashboard
 # -------------------------
 def educator_dashboard():
-    with gr.Blocks() as educator_app:
-        gr.Markdown("# Educator Dashboard")
+  gr.Markdown("# Educator Dashboard")
 
-        with gr.Tabs():
-            with gr.TabItem("Student Progress"):
-                gr.Markdown("View student performance and quiz results.")
-                student_email = gr.Textbox(label="Enter Student Email")
-                fetch_btn = gr.Button("Fetch Progress")
-                progress_output = gr.Textbox(label="Progress Report", lines=10)
+  with gr.Tabs():
+      with gr.TabItem("Student Progress"):
+          gr.Markdown("View student performance and quiz results.")
+          student_email = gr.Textbox(label="Enter Student Email")
+          fetch_btn = gr.Button("Fetch Progress")
+          progress_output = gr.Textbox(label="Progress Report", lines=10)
 
-                def fetch_progress(email):
-                    return fetch_progress_by_email(email)
+          def fetch_progress(email):
+              return fetch_progress_by_email(email)
 
-                fetch_btn.click(fetch_progress, inputs=student_email, outputs=progress_output)
+          fetch_btn.click(fetch_progress, inputs=student_email, outputs=progress_output)
 
-    return educator_app
+
 
 
 # -------------------------
@@ -372,7 +384,7 @@ def fetch_progress_by_email(email):
         for r in rows:
             report_lines.append(
                 f"Topic: {r.get('topic')}\n"
-                f"  Highest: {r.get('highest_score')}/5  "
+                f"Highest: {r.get('highest_score')}/5  "
                 f"Attempts: {r.get('attempts_count')}  "
                 f"Last: {r.get('last_attempt_score')}/5\n"
             )
@@ -385,4 +397,4 @@ def fetch_progress_by_email(email):
 # Launch
 # -------------------------
 if __name__ == "__main__":
-    login_screen().launch()
+    login_screen().launch(debug=True)
